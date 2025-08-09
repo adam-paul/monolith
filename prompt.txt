@@ -6,7 +6,7 @@ Constraints:
 
 - It must run by opening in a modern browser (double-click or file:// is fine).
 
-- You add exactly one user-facing feature that makes the experience better (useful, fun, beautiful, monetizable, etc.).
+- You make ONE significant update: add exactly one feature, architectural change, or UI update that makes the experience better (useful, fun, beautiful, monetizable, etc.).
 
 - Do not break existing features. If you refactor, keep backward compatibility. If you see broken features or you see what might be a bug, attempt to fix it as minimally as possible.
 
