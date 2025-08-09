@@ -76,6 +76,16 @@
     .scratchpad { display: grid; gap: 12px; }
     .scratchpad textarea { width: 100%; height: 40dvh; border-radius: 12px; padding: 12px; background: #00000020; color: var(--text); border: 1px solid color-mix(in oklab, var(--text) 15%, transparent); }
     .muted { color: var(--muted); }
+
+    /* Pro feature */
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px; align-items: center; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid color-mix(in oklab, var(--text) 12%, transparent); font-size:12px; }
+    .paywall { background: #00000020; border:1px dashed color-mix(in oklab, var(--text) 20%, transparent); padding:20px; border-radius:12px; }
+
+    /* Test runner */
+    .test-pass { color: var(--ok); }
+    .test-fail { color: var(--danger); }
+    .test-log { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; white-space: pre-wrap; background:#00000020; padding:10px; border-radius:10px; }
   </style>
 </head>
 <body>
@@ -136,7 +146,7 @@
 
     // --- simple global store (immutable-ish)
     const initialState = loadJSON(PERSIST_KEY, {
-      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.1.0' },
+      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.2.0' },
       features: {}, // feature-local states by id
       registry: [], // list of features
     });
@@ -179,12 +189,36 @@
     // apply theme
     document.documentElement.setAttribute('data-theme', store.get().app.theme);
 
+    // --- license utilities (offline, no wallet/MetaMask; CDN ESM allowed but not required)
+    const License = (() => {
+      const b64enc = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+      const b64dec = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), c => c.charCodeAt(0)));
+      const sum = (s) => { let t=0; for(let i=0;i<s.length;i++){ t = (t + s.charCodeAt(i)) % 100000; } return t.toString(36); };
+      function encode(obj){ const body = b64enc(JSON.stringify(obj)); return `MONO1.${sum(body)}.${body}`; }
+      function decode(str){ try{ const [tag, chk, body] = String(str||'').split('.'); if(tag!=="MONO1") return null; if(sum(body)!==chk) return null; return JSON.parse(b64dec(body)); } catch { return null; } }
+      function isActive(lic){ if(!lic) return false; if(lic.exp && new Date(lic.exp) < new Date()) return false; return true; }
+      return { encode, decode, isActive };
+    })();
+
+    function proStatus(){
+      const licStr = store.get().features?.pro?.license ?? null;
+      const lic = License.decode(licStr);
+      return { active: License.isActive(lic), license: lic, licenseStr: licStr };
+    }
+
+    // expose internals for tests
+    window.__monolith = {
+      store, bus, License,
+      proStatus,
+      canAccess: (def) => !def?.requiresPro || proStatus().active,
+    };
+
     // --- feature registry & router
     const registry = new Map();
     function registerFeature(def){
       if(!def || !def.id) throw new Error('Feature requires an id');
       if(registry.has(def.id)) throw new Error('Feature id already exists: '+def.id);
-      const wrapped = { keywords: [], icon: '🧩', ...def };
+      const wrapped = { keywords: [], icon: '🧩', requiresPro: false, ...def };
       registry.set(def.id, wrapped);
       // add to store registry list for navigation order
       const s = store.get();
@@ -192,12 +226,11 @@
       if (existingIdx === -1) {
         s.registry.push({ id: def.id, name: def.name });
       } else {
+        // keep latest name in case it changed
         s.registry[existingIdx].name = def.name;
       }
       store.set(s);
-      // allow feature to prepare
       wrapped.onRegister?.(ctx(def.id));
-      // rebuild nav
       renderNav();
     }
 
@@ -214,7 +247,6 @@
       };
     }
 
-    // --- hash router (#/featureId)
     function currentRoute(){ return (location.hash.replace(/^#\/?/, '') || '').split('/'); }
     function go(id){ location.hash = `#/${id}`; }
 
@@ -224,12 +256,13 @@
       const nav = $('#nav');
       nav.innerHTML = '';
       const items = store.get().registry
-        .map(({id, name}) => ({ id, name, icon: registry.get(id)?.icon ?? '🧩', keywords: registry.get(id)?.keywords ?? [] }))
-        .filter(x => (x.name+x.id+x.keywords.join(' ')).toLowerCase().includes(filter.toLowerCase()));
+        .map(({id, name}) => ({ id, name, def: registry.get(id) }))
+        .filter(x => (x.name + x.id + (x.def?.keywords||[]).join(' ')).toLowerCase().includes(filter.toLowerCase()));
       for(const it of items){
         const div = document.createElement('div');
         div.className = 'nav-item';
-        div.innerHTML = `<div>${it.icon}</div><div>${it.name}</div><div class="pill">${it.id}</div>`;
+        const pill = it.def?.requiresPro ? '<span class="pill">PRO</span>' : `<div class="pill">${it.id}</div>`;
+        div.innerHTML = `<div>${it.def?.icon ?? '🧩'}</div><div>${it.name}</div><div>${pill}</div>`;
         div.onclick = () => go(it.id);
         if(currentRoute()[0]===it.id) div.classList.add('active');
         nav.appendChild(div);
@@ -248,15 +281,27 @@
         body.innerHTML = `<p>This is a single-file app. Pick a feature on the left.</p>`;
         return;
       }
-      header.innerHTML = `<div style="font-weight:700">${f.icon} ${f.name}</div><div class="muted">#${f.id}</div>`;
-      try { f.mount(ctx(f.id)); }
-      catch(err){
-        const pre = document.createElement('pre');
-        pre.textContent = String(err.stack||err);
-        pre.style.color = 'var(--danger)';
-        body.appendChild(pre);
+      const gated = f.requiresPro && !proStatus().active;
+      header.innerHTML = `<div style="font-weight:700">${f.icon} ${f.name}</div><div class="muted">#${f.id}${gated? ' • Locked' : ''}</div>`;
+      if(gated){
+        const div = document.createElement('div');
+        div.className = 'paywall';
+        div.innerHTML = `
+          <h3>🔒 This feature requires <span class="badge">Monolith Pro</span></h3>
+          <p>Activate Pro to unlock <b>${f.name}</b> and other premium features.</p>
+          <button id="goProBtn">Activate Pro</button>
+        `;
+        body.appendChild(div);
+        $('#goProBtn').onclick = () => go('pro');
+      } else {
+        try { f.mount(ctx(f.id)); }
+        catch(err){
+          const pre = document.createElement('pre');
+          pre.textContent = String(err.stack||err);
+          pre.style.color = 'var(--danger)';
+          body.appendChild(pre);
+        }
       }
-      // update nav highlight
       renderNav($('#globalSearch').value);
     }
 
@@ -337,11 +382,156 @@
         el.innerHTML = `
           <h3>Project Changelog</h3>
           <ul id="changelog-list" style="padding-left:20px">
+            <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
             <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
           </ul>
           <p class="muted">Future contributors: append entries above, newest first. Keep it short.</p>
         `;
         ctx.elBody.appendChild(el);
+      }
+    });
+
+    // New Feature: Pro (licensing & paywall, offline)
+    registerFeature({
+      id: 'pro',
+      name: 'Pro',
+      icon: '💎',
+      keywords: ['license','premium','monetize'],
+      mount(ctx){
+        const s = ctx.state;
+        const status = proStatus();
+        const root = document.createElement('div');
+        root.innerHTML = `
+          <div class="kv"><div>Status</div><div>${status.active? '<span class="badge">Active</span>' : '<span class="badge">Free</span>'}</div></div>
+          <div class="kv"><div>Plan</div><div>${status.license?.plan ?? '-'}</div></div>
+          <div class="kv"><div>Owner</div><div>${status.license?.name ?? '-'}</div></div>
+          <div class="kv"><div>Expires</div><div>${status.license?.exp ?? '—'}</div></div>
+          <hr/>
+          <h4>Activate with License</h4>
+          <div class="kv"><div>License</div><div><input id="licInput" class="search" placeholder="Paste license blob here" /></div></div>
+          <div class="kv"><div></div><div><button id="applyLic">Activate</button> <button id="clearLic">Remove</button> <button id="exportLic">Export</button></div></div>
+          <hr/>
+          <h4>Redeem Coupon</h4>
+          <div class="kv"><div>Your name</div><div><input id="nameInput" class="search" placeholder="Jane Developer" value="${s.name||''}"></div></div>
+          <div class="kv"><div>Coupon</div><div><input id="couponInput" class="search" placeholder="FREE-TRIAL-7 or PRO-LIFETIME or PRO-ANNUAL"></div></div>
+          <div class="kv"><div></div><div><button id="redeemBtn">Redeem</button></div></div>
+          <p class="muted">Coupons are local-only and for demo. Licenses are encoded JSON with checksum; no network required.</p>
+        `;
+        ctx.elBody.appendChild(root);
+
+        const $id = (x) => root.querySelector('#'+x);
+        const writeLic = (licObj) => {
+          const blob = License.encode(licObj);
+          const cur = ctx.store.get();
+          cur.features.pro = { ...(cur.features.pro||{}), license: blob };
+          ctx.store.set(cur);
+          ctx.setState({}); // trigger re-render on revisit
+          alert('License activated.');
+        };
+
+        $id('applyLic').onclick = () => {
+          const str = $id('licInput').value.trim();
+          const obj = License.decode(str);
+          if(!obj){ alert('Invalid license'); return; }
+          writeLic(obj);
+        };
+        $id('clearLic').onclick = () => {
+          const cur = ctx.store.get();
+          if(cur.features.pro) delete cur.features.pro.license;
+          ctx.store.set(cur);
+          alert('License removed.');
+        };
+        $id('exportLic').onclick = () => {
+          const licStr = ctx.store.get().features?.pro?.license;
+          if(!licStr){ alert('No license to export'); return; }
+          const blob = new Blob([licStr], {type: 'text/plain'});
+          const url = URL.createObjectURL(blob);
+          const a = Object.assign(document.createElement('a'), { href: url, download: 'monolith.license.txt' });
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        };
+        $id('redeemBtn').onclick = () => {
+          const name = $id('nameInput').value.trim() || 'Monolith User';
+          const code = ($id('couponInput').value||'').trim().toUpperCase();
+          const now = new Date();
+          let plan, exp = null;
+          if(code === 'FREE-TRIAL-7') { plan = 'trial'; exp = new Date(now.getTime()+7*24*3600e3).toISOString(); }
+          else if(code === 'PRO-LIFETIME') { plan = 'lifetime'; exp = null; }
+          else if(code === 'PRO-ANNUAL') { plan = 'annual'; exp = new Date(now.getTime()+365*24*3600e3).toISOString(); }
+          else { alert('Unknown coupon'); return; }
+          writeLic({ ver:1, name, plan, issued: now.toISOString(), exp });
+        };
+      }
+    });
+
+    // Demo Feature (Pro-locked)
+    registerFeature({
+      id: 'pro-demo',
+      name: 'Pro Demo',
+      icon: '🚀',
+      requiresPro: true,
+      keywords: ['premium','demo'],
+      mount(ctx){
+        const box = document.createElement('div');
+        box.innerHTML = `<p>Welcome to <b>Pro</b>! Here is a tiny bonus: <i>Focus Mode</i>.</p>`;
+        const btn = Object.assign(document.createElement('button'), { textContent: 'Toggle Focus Mode' });
+        btn.onclick = () => document.body.classList.toggle('focus');
+        const style = document.createElement('style');
+        style.textContent = `body.focus aside{ display:none } body.focus .layout{ grid-template-columns: 1fr }`;
+        ctx.elBody.appendChild(style);
+        ctx.elBody.appendChild(box);
+        ctx.elBody.appendChild(btn);
+      }
+    });
+
+    // Test Runner Feature
+    registerFeature({
+      id: 'tests',
+      name: 'Tests',
+      icon: '🧪',
+      keywords: ['qa','spec'],
+      mount(ctx){
+        const out = document.createElement('div');
+        const log = (html) => { const p = document.createElement('div'); p.innerHTML = html; out.appendChild(p); };
+        const results = [];
+        function test(name, fn){
+          try { fn(); results.push({name, ok:true}); log(`<span class="test-pass">✔</span> ${name}`); }
+          catch(e){ results.push({name, ok:false, e}); log(`<span class="test-fail">✖</span> ${name}<div class="test-log">${String(e)}</div>`); }
+        }
+        function assert(cond, msg){ if(!cond) throw new Error(msg||'assertion failed'); }
+
+        // --- Test cases ---
+        test('License roundtrip enc/dec', () => {
+          const obj = { ver:1, name:'T', plan:'trial', issued:'2020-01-01T00:00:00.000Z', exp:'2099-01-01T00:00:00.000Z' };
+          const blob = License.encode(obj);
+          const back = License.decode(blob);
+          assert(back && back.name==='T' && back.plan==='trial', 'roundtrip mismatch');
+        });
+        test('License tamper detection', () => {
+          const obj = { ver:1, name:'X', plan:'lifetime', issued:'2020-01-01T00:00:00.000Z', exp:null };
+          let blob = License.encode(obj);
+          blob = blob.replace('X','Y');
+          const back = License.decode(blob);
+          assert(back===null, 'tamper not detected');
+        });
+        test('isActive respects expiry', () => {
+          const past = { ver:1, name:'A', plan:'trial', issued:'2020-01-01T00:00:00.000Z', exp:'2000-01-01T00:00:00.000Z' };
+          const future = { ver:1, name:'B', plan:'trial', issued:'2020-01-01T00:00:00.000Z', exp:'2099-01-01T00:00:00.000Z' };
+          assert(License.isActive(past)===false, 'past should be inactive');
+          assert(License.isActive(future)===true, 'future should be active');
+        });
+        test('canAccess checks PRO gating', () => {
+          const freeDef = { requiresPro:false };
+          const proDef = { requiresPro:true };
+          const was = ctx.store.get();
+          // ensure no license
+          const cur = ctx.store.get();
+          cur.features.pro = { license: null };
+          ctx.store.set(cur);
+          assert(window.__monolith.canAccess(freeDef)===true, 'free should be accessible');
+          assert(window.__monolith.canAccess(proDef)===false, 'pro should be locked');
+        });
+
+        ctx.elBody.appendChild(out);
       }
     });
 
