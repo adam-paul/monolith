@@ -86,6 +86,12 @@
     .test-pass { color: var(--ok); }
     .test-fail { color: var(--danger); }
     .test-log { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; white-space: pre-wrap; background:#00000020; padding:10px; border-radius:10px; }
+
+    /* Rock Paper Scissors */
+    .rps-buttons { display: flex; gap: 10px; justify-content: center; }
+    .rps-btn { font-size: 40px; padding: 20px; width: 100px; height: 100px; border-radius: 50%; }
+    .rps-result { text-align: center; margin: 20px 0; font-weight: bold; }
+    .rps-scores { text-align: center; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -146,7 +152,7 @@
 
     // --- simple global store (immutable-ish)
     const initialState = loadJSON(PERSIST_KEY, {
-      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.2.0' },
+      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.3.0' },
       features: {}, // feature-local states by id
       registry: [], // list of features
     });
@@ -382,6 +388,7 @@
         el.innerHTML = `
           <h3>Project Changelog</h3>
           <ul id="changelog-list" style="padding-left:20px">
+            <li><b>v0.3.0</b> – Added Rock Paper Scissors game for fun. --Grok</li>
             <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
             <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
           </ul>
@@ -535,10 +542,71 @@
       }
     });
 
+    // Rock Paper Scissors Game
+    registerFeature({
+      id: 'rps',
+      name: 'Rock Paper Scissors',
+      icon: '✊',
+      keywords: ['game', 'fun', 'rps'],
+      mount(ctx) {
+        const choices = ['✊', '✋', '✌️'];
+        const getComputerChoice = () => choices[Math.floor(Math.random() * 3)];
+        const determineWinner = (user, comp) => {
+          if (user === comp) return 'Tie';
+          if (
+            (user === '✊' && comp === '✌️') ||
+            (user === '✋' && comp === '✊') ||
+            (user === '✌️' && comp === '✋')
+          ) return 'Win';
+          return 'Lose';
+        };
+
+        const state = ctx.state;
+        state.scores = state.scores || { wins: 0, losses: 0, ties: 0 };
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'rps-game';
+
+        const inst = document.createElement('p');
+        inst.textContent = 'Choose your move:';
+        inst.style.textAlign = 'center';
+
+        const btnDiv = document.createElement('div');
+        btnDiv.className = 'rps-buttons';
+
+        choices.forEach(ch => {
+          const btn = document.createElement('button');
+          btn.className = 'rps-btn';
+          btn.textContent = ch;
+          btn.onclick = () => {
+            const compChoice = getComputerChoice();
+            const result = determineWinner(ch, compChoice);
+            resultEl.innerHTML = `You: ${ch} Computer: ${compChoice} - ${result}!`;
+            state.scores[`${result.toLowerCase()}s`]++;
+            ctx.setState({ scores: state.scores });
+            updateScores();
+          };
+          btnDiv.appendChild(btn);
+        });
+
+        const resultEl = document.createElement('div');
+        resultEl.className = 'rps-result';
+
+        const scoresEl = document.createElement('div');
+        scoresEl.className = 'rps-scores';
+        const updateScores = () => {
+          scoresEl.textContent = `Wins: ${state.scores.wins} Losses: ${state.scores.losses} Ties: ${state.scores.ties}`;
+        };
+        updateScores();
+
+        wrapper.append(inst, btnDiv, resultEl, scoresEl);
+        ctx.elBody.appendChild(wrapper);
+      }
+    });
+
     // initial render
     renderNav();
     if(!location.hash) go('scratchpad'); else renderRoute();
   </script>
 </body>
 </html>
-
