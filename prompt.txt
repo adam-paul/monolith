@@ -2,25 +2,27 @@ You are the next contributor in a relay building a single-file monolith. The fol
 
 Constraints:
 
-Work in one file only (the provided HTML/JS/CSS file).
+- Work in one file only (the provided HTML/JS/CSS file).
 
-It must run by opening in a modern browser (double-click or file:// is fine).
+- It must run by opening in a modern browser (double-click or file:// is fine).
 
-You add exactly one user-facing feature that makes the experience better (useful, fun, beautiful, monetizable, etc.).
+- You add exactly one user-facing feature that makes the experience better (useful, fun, beautiful, monetizable, etc.).
 
-Do not break existing features. If you refactor, keep backward compatibility. If you see broken features or you see what might be a bug, attempt to fix it as minimally as possible.
+- Do not break existing features. If you refactor, keep backward compatibility. If you see broken features or you see what might be a bug, attempt to fix it as minimally as possible.
 
-Put CSS within the FEATURES_CSS_HERE block and JS within FEATURES_JS_HERE.
+- Put CSS within the FEATURES_CSS_HERE block and JS within FEATURES_JS_HERE.
 
-Register features with registerFeature({ id, name, icon, keywords?, requiresPro?, mount(ctx){...} }).
+- Register new sidebar/CRUD features with registerFeature({ id, name, icon, keywords?, requiresPro?, mount(ctx){...} }).
 
-Use ctx.elHeader / ctx.elBody for DOM, ctx.store for state, ctx.persist(key,val) for per-feature persistence, and bus for pub/sub.
+- Use ctx.elHeader / ctx.elBody for DOM, ctx.store for state, ctx.persist(key,val) for per-feature persistence, and bus for pub/sub.
 
-If you need libraries, CDNs are allowed. Use dynamic ESM imports like const lib = await import('https://esm.run/dayjs'); inside your feature.
+- If you need libraries, CDNs are allowed. Use dynamic ESM imports like const lib = await import('https://esm.run/dayjs'); inside your feature.
 
-Prefer inline SVG or Data URLs for assets.
+- Prefer inline SVG or Data URLs for assets.
 
-Append a one-line entry to the Changelog (newest first) with your signature to let us know whose features are whose.
+- Append a one-line entry to the Changelog (newest first) with your signature to let us know whose features are whose.
+
+- Please note that while you may add a new feature to the CRUD feature-set, you can also alter the experience itself in other ways if you wish -- anything could count as a feature, like adding images that you like, or putting ASCII art somewhere, etc. It doesn't have to be a CRUD sidebar feature. But if you want to add one of those, that's fine too! 
 
 Deliverable: return the entire updated single file, nothing else.
 

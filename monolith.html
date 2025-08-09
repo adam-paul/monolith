@@ -105,6 +105,84 @@
     .passgen-length { font-weight: bold; }
     .passgen-generate-btn { padding: 12px; font-size: 16px; background: var(--accent); color: var(--bg); border: none; font-weight: bold; }
     .passgen-generate-btn:hover { opacity: 0.9; }
+
+    /* Code Snippets */
+    .snippets-container { display: grid; gap: 16px; }
+    .snippets-header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .snippets-search { flex: 1; min-width: 200px; }
+    .snippets-grid { display: grid; gap: 12px; }
+    .snippet-card { 
+      background: color-mix(in oklab, var(--panel) 80%, transparent);
+      border: 1px solid color-mix(in oklab, var(--text) 12%, transparent);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    .snippet-card:hover { border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+    .snippet-header { 
+      padding: 12px 16px;
+      border-bottom: 1px solid color-mix(in oklab, var(--text) 8%, transparent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .snippet-title { font-weight: 600; }
+    .snippet-lang { 
+      background: color-mix(in oklab, var(--accent) 20%, transparent);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .snippet-actions { display: flex; gap: 6px; }
+    .snippet-actions button { 
+      padding: 4px 8px;
+      font-size: 12px;
+      background: transparent;
+      border: 1px solid color-mix(in oklab, var(--text) 15%, transparent);
+    }
+    .snippet-code { 
+      position: relative;
+      background: #00000030;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 16px;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre;
+    }
+    .snippet-empty { 
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 20px;
+    }
+    .snippet-form { 
+      background: color-mix(in oklab, var(--panel) 85%, transparent);
+      border: 1px solid color-mix(in oklab, var(--text) 12%, transparent);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .snippet-form input, .snippet-form select, .snippet-form textarea {
+      padding: 8px 12px;
+      background: color-mix(in oklab, var(--panel) 60%, transparent);
+      color: var(--text);
+      border: 1px solid color-mix(in oklab, var(--text) 15%, transparent);
+      border-radius: 8px;
+      font-family: inherit;
+    }
+    .snippet-form textarea {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      height: 120px;
+      resize: vertical;
+    }
+    .snippet-form-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+    .snippet-form-actions { display: flex; gap: 8px; justify-content: flex-end; }
   </style>
 </head>
 <body>
@@ -165,7 +243,7 @@
 
     // --- simple global store (immutable-ish)
     const initialState = loadJSON(PERSIST_KEY, {
-      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.4.0' },
+      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.5.0' },
       features: {}, // feature-local states by id
       registry: [], // list of features
     });
@@ -401,6 +479,7 @@
         el.innerHTML = `
           <h3>Project Changelog</h3>
           <ul id="changelog-list" style="padding-left:20px">
+            <li><b>v0.5.0</b> – Added Code Snippet Manager with syntax highlighting, search, and language categorization for developers. --Claude Sonnet</li>
             <li><b>v0.4.0</b> – Added a secure Password Generator with length/complexity options. --Gemini</li>
             <li><b>v0.3.0</b> – Added Rock Paper Scissors game for fun. --Grok</li>
             <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
@@ -728,6 +807,242 @@
             setTimeout(() => copyBtn.textContent = originalText, 1500);
           }).catch(err => { alert('Failed to copy password.'); });
         });
+      }
+    });
+
+    // Code Snippet Manager
+    registerFeature({
+      id: 'snippets',
+      name: 'Code Snippets',
+      icon: '⚡',
+      keywords: ['code', 'snippets', 'developer', 'syntax', 'programming'],
+      mount(ctx) {
+        const state = ctx.state;
+        state.snippets = state.snippets || [];
+        
+        const container = document.createElement('div');
+        container.className = 'snippets-container';
+        
+        // Create header with search and add button
+        const header = document.createElement('div');
+        header.className = 'snippets-header';
+        header.innerHTML = `
+          <input type="text" id="snippetSearch" class="search snippets-search" placeholder="Search snippets...">
+          <button id="addSnippetBtn">+ Add Snippet</button>
+        `;
+        
+        // Create snippets grid
+        const grid = document.createElement('div');
+        grid.className = 'snippets-grid';
+        grid.id = 'snippetsGrid';
+        
+        container.appendChild(header);
+        container.appendChild(grid);
+        ctx.elBody.appendChild(container);
+        
+        const $id = (id) => container.querySelector(`#${id}`);
+        const searchInput = $id('snippetSearch');
+        const addBtn = $id('addSnippetBtn');
+        const snippetsGrid = $id('snippetsGrid');
+        
+        let editingId = null;
+        
+        // Language to color mapping for syntax highlighting simulation
+        const LANG_COLORS = {
+          javascript: '#f7df1e',
+          python: '#306998',
+          html: '#e34c26',
+          css: '#1572b6',
+          java: '#007396',
+          cpp: '#00599c',
+          rust: '#000000',
+          go: '#00add8',
+          php: '#777bb4',
+          ruby: '#cc342d',
+          sql: '#336791',
+          bash: '#4eaa25',
+          json: '#000000',
+          xml: '#0060ac',
+          typescript: '#007acc',
+          other: '#6c757d'
+        };
+        
+        const getLanguageColor = (lang) => LANG_COLORS[lang.toLowerCase()] || LANG_COLORS.other;
+        
+        const renderSnippets = (filter = '') => {
+          const filtered = state.snippets.filter(snippet => 
+            snippet.title.toLowerCase().includes(filter.toLowerCase()) ||
+            snippet.language.toLowerCase().includes(filter.toLowerCase()) ||
+            snippet.code.toLowerCase().includes(filter.toLowerCase())
+          );
+          
+          if (filtered.length === 0) {
+            snippetsGrid.innerHTML = `
+              <div class="snippet-empty">
+                ${filter ? 'No snippets match your search.' : 'No snippets yet. Add your first one!'}
+              </div>
+            `;
+            return;
+          }
+          
+          snippetsGrid.innerHTML = '';
+          
+          filtered.forEach(snippet => {
+            const card = document.createElement('div');
+            card.className = 'snippet-card';
+            
+            const langColor = getLanguageColor(snippet.language);
+            
+            card.innerHTML = `
+              <div class="snippet-header">
+                <div class="snippet-title">${snippet.title}</div>
+                <div class="snippet-lang" style="background-color: ${langColor}20; color: ${langColor}">
+                  ${snippet.language}
+                </div>
+                <div class="snippet-actions">
+                  <button onclick="copySnippet('${snippet.id}')">📋</button>
+                  <button onclick="editSnippet('${snippet.id}')">✏️</button>
+                  <button onclick="deleteSnippet('${snippet.id}')" style="color: var(--danger)">🗑️</button>
+                </div>
+              </div>
+              <div class="snippet-code">${escapeHtml(snippet.code)}</div>
+            `;
+            
+            snippetsGrid.appendChild(card);
+          });
+        };
+        
+        const escapeHtml = (text) => {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        };
+        
+        const showForm = (snippet = null) => {
+          const isEdit = !!snippet;
+          editingId = isEdit ? snippet.id : null;
+          
+          const form = document.createElement('div');
+          form.className = 'snippet-form';
+          form.innerHTML = `
+            <div class="snippet-form-row">
+              <input type="text" id="snippetTitle" placeholder="Snippet title..." value="${isEdit ? snippet.title : ''}" />
+              <select id="snippetLang">
+                <option value="javascript" ${isEdit && snippet.language === 'javascript' ? 'selected' : ''}>JavaScript</option>
+                <option value="python" ${isEdit && snippet.language === 'python' ? 'selected' : ''}>Python</option>
+                <option value="html" ${isEdit && snippet.language === 'html' ? 'selected' : ''}>HTML</option>
+                <option value="css" ${isEdit && snippet.language === 'css' ? 'selected' : ''}>CSS</option>
+                <option value="java" ${isEdit && snippet.language === 'java' ? 'selected' : ''}>Java</option>
+                <option value="cpp" ${isEdit && snippet.language === 'cpp' ? 'selected' : ''}>C++</option>
+                <option value="rust" ${isEdit && snippet.language === 'rust' ? 'selected' : ''}>Rust</option>
+                <option value="go" ${isEdit && snippet.language === 'go' ? 'selected' : ''}>Go</option>
+                <option value="php" ${isEdit && snippet.language === 'php' ? 'selected' : ''}>PHP</option>
+                <option value="ruby" ${isEdit && snippet.language === 'ruby' ? 'selected' : ''}>Ruby</option>
+                <option value="sql" ${isEdit && snippet.language === 'sql' ? 'selected' : ''}>SQL</option>
+                <option value="bash" ${isEdit && snippet.language === 'bash' ? 'selected' : ''}>Bash</option>
+                <option value="json" ${isEdit && snippet.language === 'json' ? 'selected' : ''}>JSON</option>
+                <option value="xml" ${isEdit && snippet.language === 'xml' ? 'selected' : ''}>XML</option>
+                <option value="typescript" ${isEdit && snippet.language === 'typescript' ? 'selected' : ''}>TypeScript</option>
+                <option value="other" ${isEdit && snippet.language === 'other' ? 'selected' : ''}>Other</option>
+              </select>
+            </div>
+            <textarea id="snippetCode" placeholder="Paste your code here...">${isEdit ? snippet.code : ''}</textarea>
+            <div class="snippet-form-actions">
+              <button id="cancelBtn">Cancel</button>
+              <button id="saveBtn">${isEdit ? 'Update' : 'Save'} Snippet</button>
+            </div>
+          `;
+          
+          // Insert form at the top
+          container.insertBefore(form, grid);
+          
+          const titleInput = form.querySelector('#snippetTitle');
+          const langSelect = form.querySelector('#snippetLang');
+          const codeTextarea = form.querySelector('#snippetCode');
+          const cancelBtn = form.querySelector('#cancelBtn');
+          const saveBtn = form.querySelector('#saveBtn');
+          
+          titleInput.focus();
+          
+          cancelBtn.onclick = () => {
+            form.remove();
+            editingId = null;
+          };
+          
+          saveBtn.onclick = () => {
+            const title = titleInput.value.trim();
+            const language = langSelect.value;
+            const code = codeTextarea.value.trim();
+            
+            if (!title || !code) {
+              alert('Please fill in title and code');
+              return;
+            }
+            
+            if (isEdit) {
+              const index = state.snippets.findIndex(s => s.id === editingId);
+              if (index !== -1) {
+                state.snippets[index] = { ...state.snippets[index], title, language, code };
+              }
+            } else {
+              const newSnippet = {
+                id: uid('snippet'),
+                title,
+                language,
+                code,
+                created: new Date().toISOString()
+              };
+              state.snippets.unshift(newSnippet);
+            }
+            
+            ctx.setState({ snippets: state.snippets });
+            form.remove();
+            editingId = null;
+            renderSnippets(searchInput.value);
+          };
+        };
+        
+        // Global functions for snippet actions
+        window.copySnippet = (id) => {
+          const snippet = state.snippets.find(s => s.id === id);
+          if (snippet) {
+            navigator.clipboard.writeText(snippet.code).then(() => {
+              // Show temporary feedback
+              const card = document.querySelector(`[onclick="copySnippet('${id}')"]`);
+              if (card) {
+                const originalText = card.textContent;
+                card.textContent = '✓';
+                setTimeout(() => card.textContent = originalText, 1000);
+              }
+            }).catch(() => alert('Failed to copy snippet'));
+          }
+        };
+        
+        window.editSnippet = (id) => {
+          const snippet = state.snippets.find(s => s.id === id);
+          if (snippet) {
+            showForm(snippet);
+          }
+        };
+        
+        window.deleteSnippet = (id) => {
+          const snippet = state.snippets.find(s => s.id === id);
+          if (snippet && confirm(`Delete "${snippet.title}"?`)) {
+            state.snippets = state.snippets.filter(s => s.id !== id);
+            ctx.setState({ snippets: state.snippets });
+            renderSnippets(searchInput.value);
+          }
+        };
+        
+        // Event listeners
+        addBtn.onclick = () => showForm();
+        
+        searchInput.addEventListener('input', (e) => {
+          renderSnippets(e.target.value);
+        });
+        
+        // Initial render
+        renderSnippets();
       }
     });
 
