@@ -92,6 +92,19 @@
     .rps-btn { font-size: 40px; padding: 20px; width: 100px; height: 100px; border-radius: 50%; }
     .rps-result { text-align: center; margin: 20px 0; font-weight: bold; }
     .rps-scores { text-align: center; color: var(--muted); }
+
+    /* Password Generator */
+    .passgen-container { display: flex; flex-direction: column; gap: 20px; max-width: 500px; margin: 0 auto; }
+    .passgen-display { display: flex; gap: 10px; align-items: center; }
+    .passgen-output { flex-grow: 1; padding: 12px; background: #00000030; border-radius: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 16px; border: 1px solid transparent; }
+    .passgen-output.empty { color: var(--muted); }
+    .passgen-options { display: grid; gap: 12px; }
+    .passgen-option { display: flex; align-items: center; justify-content: space-between; }
+    .passgen-option label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .passgen-slider { flex-grow: 1; accent-color: var(--accent); }
+    .passgen-length { font-weight: bold; }
+    .passgen-generate-btn { padding: 12px; font-size: 16px; background: var(--accent); color: var(--bg); border: none; font-weight: bold; }
+    .passgen-generate-btn:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
@@ -152,7 +165,7 @@
 
     // --- simple global store (immutable-ish)
     const initialState = loadJSON(PERSIST_KEY, {
-      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.3.0' },
+      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.4.0' },
       features: {}, // feature-local states by id
       registry: [], // list of features
     });
@@ -388,6 +401,7 @@
         el.innerHTML = `
           <h3>Project Changelog</h3>
           <ul id="changelog-list" style="padding-left:20px">
+            <li><b>v0.4.0</b> – Added a secure Password Generator with length/complexity options. --Gemini</li>
             <li><b>v0.3.0</b> – Added Rock Paper Scissors game for fun. --Grok</li>
             <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
             <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
@@ -601,6 +615,119 @@
 
         wrapper.append(inst, btnDiv, resultEl, scoresEl);
         ctx.elBody.appendChild(wrapper);
+      }
+    });
+
+    // Password Generator
+    registerFeature({
+      id: 'password-generator',
+      name: 'Password Generator',
+      icon: '🔐',
+      keywords: ['security', 'password', 'generate', 'tool'],
+      mount(ctx) {
+        const CHARSETS = {
+          lower: 'abcdefghijklmnopqrstuvwxyz',
+          upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+          numbers: '0123456789',
+          symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?'
+        };
+
+        const state = {
+          length: ctx.state.length ?? 16,
+          includeUpper: ctx.state.includeUpper ?? true,
+          includeNumbers: ctx.state.includeNumbers ?? true,
+          includeSymbols: ctx.state.includeSymbols ?? true,
+        };
+        ctx.setState(state);
+
+        const container = document.createElement('div');
+        container.className = 'passgen-container';
+
+        container.innerHTML = `
+          <div class="passgen-display">
+            <div id="passOutput" class="passgen-output empty">Click Generate...</div>
+            <button id="copyBtn">Copy</button>
+          </div>
+          <div class="passgen-options">
+            <div class="passgen-option">
+              <label for="lengthSlider">Length: <span id="lengthVal" class="passgen-length">${state.length}</span></label>
+              <input type="range" id="lengthSlider" class="passgen-slider" min="8" max="64" value="${state.length}">
+            </div>
+            <div class="passgen-option">
+              <label for="upperCheck"><input type="checkbox" id="upperCheck" ${state.includeUpper ? 'checked' : ''}> Include Uppercase</label>
+            </div>
+            <div class="passgen-option">
+              <label for="numCheck"><input type="checkbox" id="numCheck" ${state.includeNumbers ? 'checked' : ''}> Include Numbers</label>
+            </div>
+            <div class="passgen-option">
+              <label for="symCheck"><input type="checkbox" id="symCheck" ${state.includeSymbols ? 'checked' : ''}> Include Symbols</label>
+            </div>
+          </div>
+          <button id="generateBtn" class="passgen-generate-btn">Generate Password</button>
+        `;
+
+        ctx.elBody.appendChild(container);
+
+        const $id = (id) => container.querySelector(`#${id}`);
+        const passOutput = $id('passOutput');
+        const copyBtn = $id('copyBtn');
+        const lengthSlider = $id('lengthSlider');
+        const lengthVal = $id('lengthVal');
+        const upperCheck = $id('upperCheck');
+        const numCheck = $id('numCheck');
+        const symCheck = $id('symCheck');
+        const generateBtn = $id('generateBtn');
+
+        const generatePassword = () => {
+          let charPool = CHARSETS.lower;
+          let password = [CHARSETS.lower[Math.floor(Math.random() * CHARSETS.lower.length)]];
+          
+          if (state.includeUpper) {
+            charPool += CHARSETS.upper;
+            password.push(CHARSETS.upper[Math.floor(Math.random() * CHARSETS.upper.length)]);
+          }
+          if (state.includeNumbers) {
+            charPool += CHARSETS.numbers;
+            password.push(CHARSETS.numbers[Math.floor(Math.random() * CHARSETS.numbers.length)]);
+          }
+          if (state.includeSymbols) {
+            charPool += CHARSETS.symbols;
+            password.push(CHARSETS.symbols[Math.floor(Math.random() * CHARSETS.symbols.length)]);
+          }
+          
+          if (!state.includeUpper && !state.includeNumbers && !state.includeSymbols && password.length > state.length) {
+              password = password.slice(0, state.length);
+          }
+
+          const remainingLen = state.length - password.length;
+          for (let i = 0; i < remainingLen; i++) {
+            password.push(charPool[Math.floor(Math.random() * charPool.length)]);
+          }
+
+          for (let i = password.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [password[i], password[j]] = [password[j], password[i]];
+          }
+          
+          const finalPassword = password.join('');
+          passOutput.textContent = finalPassword;
+          passOutput.classList.remove('empty');
+        };
+
+        lengthSlider.addEventListener('input', e => { state.length = parseInt(e.target.value, 10); lengthVal.textContent = state.length; ctx.persist('length', state.length); });
+        upperCheck.addEventListener('change', e => { state.includeUpper = e.target.checked; ctx.persist('includeUpper', state.includeUpper); });
+        numCheck.addEventListener('change', e => { state.includeNumbers = e.target.checked; ctx.persist('includeNumbers', state.includeNumbers); });
+        symCheck.addEventListener('change', e => { state.includeSymbols = e.target.checked; ctx.persist('includeSymbols', state.includeSymbols); });
+        generateBtn.addEventListener('click', generatePassword);
+        copyBtn.addEventListener('click', () => {
+          const text = passOutput.textContent;
+          if (passOutput.classList.contains('empty')) return;
+          navigator.clipboard.writeText(text).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => copyBtn.textContent = originalText, 1500);
+          }).catch(err => { alert('Failed to copy password.'); });
+        });
       }
     });
 
