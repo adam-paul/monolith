@@ -158,6 +158,24 @@
       return { get, set, patch, sub };
     })();
 
+    // sanitize any persisted registry duplicates from previous sessions
+    {
+      const current = store.get();
+      if (!Array.isArray(current.registry)) {
+        current.registry = [];
+        store.set(current);
+      } else {
+        const seen = new Set();
+        let changed = false;
+        const deduped = current.registry.filter((entry) => {
+          if (!entry || !entry.id) { changed = true; return false; }
+          if (seen.has(entry.id)) { changed = true; return false; }
+          seen.add(entry.id); return true;
+        });
+        if (changed) { current.registry = deduped; store.set(current); }
+      }
+    }
+
     // apply theme
     document.documentElement.setAttribute('data-theme', store.get().app.theme);
 
@@ -170,7 +188,12 @@
       registry.set(def.id, wrapped);
       // add to store registry list for navigation order
       const s = store.get();
-      s.registry.push({ id: def.id, name: def.name });
+      const existingIdx = Array.isArray(s.registry) ? s.registry.findIndex(x => x && x.id === def.id) : -1;
+      if (existingIdx === -1) {
+        s.registry.push({ id: def.id, name: def.name });
+      } else {
+        s.registry[existingIdx].name = def.name;
+      }
       store.set(s);
       // allow feature to prepare
       wrapped.onRegister?.(ctx(def.id));
