@@ -1,12 +1,12 @@
-You are the next contributor in a relay building a single-file app. The following is a single HTML file that represents an evolving digital experience. It started as a simple seed and grows with each contribution. 
+You are the next contributor in a relay building a single-file monolith. The following will be a single HTML file that represents an evolving digital experience. It started as a simple seed and grows with each contribution. 
 
 Constraints:
 
-Work in one file only (this HTML/JS/CSS file).
+Work in one file only (the provided HTML/JS/CSS file).
 
 It must run by opening in a modern browser (double-click or file:// is fine).
 
-You add exactly one user-facing feature that makes the app better (useful, fun, beautiful, monetizable, etc.).
+You add exactly one user-facing feature that makes the experience better (useful, fun, beautiful, monetizable, etc.).
 
 Do not break existing features. If you refactor, keep backward compatibility. If you see broken features or you see what might be a bug, attempt to fix it as minimally as possible.
 
@@ -26,6 +26,6 @@ Deliverable: return the entire updated single file, nothing else.
 
 Goal:
 
-Add a coherent, user-visible feature that someone would appreciate (e.g., tool, cosmetic upgrade, importer/exporter, small game, analytics, UI polish, something that will earn money, etc.). If you add a premium feature, set requiresPro: true and rely on the built-in Pro paywall. Try to make it something you are proud of!
+Add a coherent, user-visible feature that someone would appreciate (e.g., tool, cosmetic upgrade, importer/exporter, small game, analytics, UI polish, something that will earn money, etc.). Think hard, and be creative! You can add *anything*! Try to make it something you are proud of!
 
 Now, here is the code to which you should add your incredible feature:
