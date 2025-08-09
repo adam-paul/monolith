@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monolith App</title>
+  <style>
+    /* =====================
+       MONOLITH APP BASE CSS
+       ===================== */
+    :root {
+      --bg: #0b0c0f;
+      --panel: #12151a;
+      --text: #e9eef5;
+      --muted: #a6b0c3;
+      --accent: #7cd2ff;
+      --accent-2: #c299ff;
+      --danger: #ff6b6b;
+      --ok: #4cd964;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 16px;
+    }
+    [data-theme="light"] {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #0f1222;
+      --muted: #4b5565;
+      --accent: #006cbe;
+      --accent-2: #6a32c9;
+      --danger: #cc2b2b;
+      --ok: #2c8b3f;
+      --shadow: 0 10px 20px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font: 14px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, var(--bg), #0a0c10 60%);
+      color: var(--text);
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.0));
+      backdrop-filter: blur(10px);
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .3px; }
+    .brand .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); }
+    .toolbar { display: flex; gap: 8px; align-items: center; }
+    button, .btn {
+      border: 1px solid color-mix(in oklab, var(--text) 12%, transparent);
+      background: color-mix(in oklab, var(--panel) 70%, transparent);
+      color: var(--text); padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    }
+    button:hover { border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+    .layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; padding: 12px 16px 32px; }
+    aside { background: color-mix(in oklab, var(--panel) 90%, transparent); border: 1px solid color-mix(in oklab, var(--text) 10%, transparent); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); height: calc(100dvh - 96px); overflow: auto; }
+    main { background: color-mix(in oklab, var(--panel) 92%, transparent); border: 1px solid color-mix(in oklab, var(--text) 10%, transparent); border-radius: var(--radius); padding: 0; box-shadow: var(--shadow); min-height: calc(100dvh - 96px); overflow: clip; }
+    nav { display: grid; gap: 6px; }
+    .nav-item { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; padding: 8px; border-radius: 10px; align-items: center; cursor: pointer; }
+    .nav-item:hover { background: color-mix(in oklab, var(--panel) 70%, transparent); }
+    .nav-item.active { outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent); }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: color-mix(in oklab, var(--accent) 30%, transparent); color: var(--text); }
+    .search { width: 100%; padding: 8px 12px; background: transparent; color: var(--text); border-radius: 10px; border: 1px solid color-mix(in oklab, var(--text) 10%, transparent); }
+    .section-title { font-weight: 700; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: .08em; font-size: 12px; }
+
+    /* Main viewport */
+    #viewport { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+    .view-header { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid color-mix(in oklab, var(--text) 10%, transparent); }
+    .view-body { padding: 16px; overflow: auto; }
+
+    /* Feature-specific CSS goes below. Add only within FEATURES_CSS_HERE marker. */
+    /* === FEATURES_CSS_HERE === */
+    /* Scratchpad feature */
+    .scratchpad { display: grid; gap: 12px; }
+    .scratchpad textarea { width: 100%; height: 40dvh; border-radius: 12px; padding: 12px; background: #00000020; color: var(--text); border: 1px solid color-mix(in oklab, var(--text) 15%, transparent); }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><div class="logo"></div><div>Monolith App</div></div>
+    <div class="toolbar">
+      <button id="themeToggle" title="Toggle theme">🌓 Theme</button>
+      <button id="exportBtn" title="Export app state">⇪ Export</button>
+      <label class="btn" title="Import app state"><input id="importFile" type="file" accept="application/json" style="display:none">⇩ Import</label>
+    </div>
+  </header>
+  <div class="layout">
+    <aside>
+      <input id="globalSearch" class="search" placeholder="Search features…" />
+      <div class="section-title">Features</div>
+      <nav id="nav"></nav>
+      <div class="section-title">About</div>
+      <div style="font-size:12px; color:var(--muted);">
+        This is a single-file, no-build web app. Everything lives here. Add features via the registry API in the JS section.
+      </div>
+    </aside>
+    <main>
+      <div id="viewport">
+        <div id="viewHeader" class="view-header"></div>
+        <div id="viewBody" class="view-body"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    "use strict";
+    /* =====================
+       MONOLITH APP CORE
+       - No build, single file, runs in modern browsers.
+       - Extension points marked with FEATURES_JS_HERE and FEATURES_CSS_HERE.
+       - Add features by calling registerFeature({ id, name, icon, keywords, mount(ctx) {...} })
+       - Keep IDs unique (suggest kebab-case). Use ctx.store/ctx.bus/ctx.persist.
+       ===================== */
+
+    // --- tiny util helpers
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const uid = (p="id") => `${p}-${Math.random().toString(36).slice(2,9)}`;
+
+    // --- persistence
+    const PERSIST_KEY = "monolith_state_v1";
+    const loadJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+    const saveJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+    // --- event bus (pub/sub)
+    const bus = (() => {
+      const map = new Map();
+      return {
+        on(type, fn){ if(!map.has(type)) map.set(type, new Set()); map.get(type).add(fn); return () => map.get(type).delete(fn); },
+        emit(type, data){ (map.get(type) ?? []).forEach(fn => fn(data)); },
+      };
+    })();
+
+    // --- simple global store (immutable-ish)
+    const initialState = loadJSON(PERSIST_KEY, {
+      app: { theme: matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark', version: '0.1.0' },
+      features: {}, // feature-local states by id
+      registry: [], // list of features
+    });
+
+    const store = (() => {
+      let state = initialState;
+      const subs = new Set();
+      function get(){ return state; }
+      function set(next){ state = structuredClone(next); saveJSON(PERSIST_KEY, state); subs.forEach(fn=>fn(state)); bus.emit('state:changed', state); }
+      function patch(path, value){
+        const next = structuredClone(state);
+        // tiny dot-path set
+        const parts = path.split('.');
+        let cur = next; for (let i=0;i<parts.length-1;i++){ cur = cur[parts[i]] ?? (cur[parts[i]] = {}); }
+        cur[parts.at(-1)] = value;
+        set(next);
+      }
+      function sub(fn){ subs.add(fn); return () => subs.delete(fn); }
+      return { get, set, patch, sub };
+    })();
+
+    // apply theme
+    document.documentElement.setAttribute('data-theme', store.get().app.theme);
+
+    // --- feature registry & router
+    const registry = new Map();
+    function registerFeature(def){
+      if(!def || !def.id) throw new Error('Feature requires an id');
+      if(registry.has(def.id)) throw new Error('Feature id already exists: '+def.id);
+      const wrapped = { keywords: [], icon: '🧩', ...def };
+      registry.set(def.id, wrapped);
+      // add to store registry list for navigation order
+      const s = store.get();
+      s.registry.push({ id: def.id, name: def.name });
+      store.set(s);
+      // allow feature to prepare
+      wrapped.onRegister?.(ctx(def.id));
+      // rebuild nav
+      renderNav();
+    }
+
+    function ctx(id){
+      return {
+        id,
+        elHeader: $('#viewHeader'),
+        elBody: $('#viewBody'),
+        store,
+        bus,
+        get state(){ return store.get().features[id] ?? (store.get().features[id] = {}); },
+        setState(partial){ const cur = store.get(); cur.features[id] = { ...(cur.features[id]||{}), ...partial }; store.set(cur); },
+        persist(key, value){ const cur = store.get(); const base = cur.features[id] ?? {}; base[key] = value; cur.features[id] = base; store.set(cur); },
+      };
+    }
+
+    // --- hash router (#/featureId)
+    function currentRoute(){ return (location.hash.replace(/^#\/?/, '') || '').split('/'); }
+    function go(id){ location.hash = `#/${id}`; }
+
+    window.addEventListener('hashchange', () => renderRoute());
+
+    function renderNav(filter=""){
+      const nav = $('#nav');
+      nav.innerHTML = '';
+      const items = store.get().registry
+        .map(({id, name}) => ({ id, name, icon: registry.get(id)?.icon ?? '🧩', keywords: registry.get(id)?.keywords ?? [] }))
+        .filter(x => (x.name+x.id+x.keywords.join(' ')).toLowerCase().includes(filter.toLowerCase()));
+      for(const it of items){
+        const div = document.createElement('div');
+        div.className = 'nav-item';
+        div.innerHTML = `<div>${it.icon}</div><div>${it.name}</div><div class="pill">${it.id}</div>`;
+        div.onclick = () => go(it.id);
+        if(currentRoute()[0]===it.id) div.classList.add('active');
+        nav.appendChild(div);
+      }
+    }
+
+    function renderRoute(){
+      const [featureId] = currentRoute();
+      const f = registry.get(featureId);
+      const header = $('#viewHeader');
+      const body = $('#viewBody');
+      header.innerHTML = '';
+      body.innerHTML = '';
+      if(!f){
+        header.innerHTML = `<div style="font-weight:700">Welcome</div><div class="muted">Monolith v${store.get().app.version}</div>`;
+        body.innerHTML = `<p>This is a single-file app. Pick a feature on the left.</p>`;
+        return;
+      }
+      header.innerHTML = `<div style="font-weight:700">${f.icon} ${f.name}</div><div class="muted">#${f.id}</div>`;
+      try { f.mount(ctx(f.id)); }
+      catch(err){
+        const pre = document.createElement('pre');
+        pre.textContent = String(err.stack||err);
+        pre.style.color = 'var(--danger)';
+        body.appendChild(pre);
+      }
+      // update nav highlight
+      renderNav($('#globalSearch').value);
+    }
+
+    // --- global UI controls
+    $('#themeToggle').onclick = () => {
+      const cur = store.get();
+      cur.app.theme = cur.app.theme === 'light' ? 'dark' : 'light';
+      store.set(cur);
+      document.documentElement.setAttribute('data-theme', cur.app.theme);
+    };
+
+    $('#exportBtn').onclick = () => {
+      const data = JSON.stringify(store.get(), null, 2);
+      const blob = new Blob([data], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement('a'), { href: url, download: 'monolith_state.json' });
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    };
+
+    $('#importFile').addEventListener('change', (e) => {
+      const file = e.target.files?.[0]; if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { try { const next = JSON.parse(reader.result); store.set(next); renderNav($('#globalSearch').value); renderRoute(); } catch(err){ alert('Invalid JSON'); } };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    $('#globalSearch').addEventListener('input', (e) => renderNav(e.target.value));
+
+    store.sub(() => { document.documentElement.setAttribute('data-theme', store.get().app.theme); });
+
+    // === FEATURES_JS_HERE ===
+    // Example Feature: Scratchpad (baseline, easy to extend)
+    registerFeature({
+      id: 'scratchpad',
+      name: 'Scratchpad',
+      icon: '📝',
+      keywords: ['notes','text','editor'],
+      mount(ctx){
+        const state = ctx.state;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'scratchpad';
+        const tools = document.createElement('div');
+        const ta = document.createElement('textarea');
+        ta.placeholder = 'Type notes here…';
+        ta.value = state.text ?? '';
+        ta.addEventListener('input', () => ctx.persist('text', ta.value));
+        const info = document.createElement('div');
+        info.className = 'muted';
+        const count = () => info.textContent = `${ta.value.length} chars • ${ta.value.split(/\s+/).filter(Boolean).length} words`;
+        ta.addEventListener('input', count); count();
+
+        const exportBtn = Object.assign(document.createElement('button'), { textContent: 'Export to file' });
+        exportBtn.onclick = () => {
+          const blob = new Blob([ta.value], {type: 'text/plain'});
+          const url = URL.createObjectURL(blob);
+          const a = Object.assign(document.createElement('a'), { href: url, download: 'scratchpad.txt' });
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        };
+
+        const clearBtn = Object.assign(document.createElement('button'), { textContent: 'Clear' });
+        clearBtn.onclick = () => { if(confirm('Clear scratchpad?')) { ta.value=''; ta.dispatchEvent(new Event('input')); } };
+
+        tools.append(exportBtn, clearBtn);
+        wrapper.append(tools, ta, info);
+        ctx.elBody.appendChild(wrapper);
+      }
+    });
+
+    // Example Feature: Changelog (for LLMs to update)
+    registerFeature({
+      id: 'changelog',
+      name: 'Changelog',
+      icon: '📜',
+      keywords: ['history','log'],
+      mount(ctx){
+        const el = document.createElement('div');
+        el.innerHTML = `
+          <h3>Project Changelog</h3>
+          <ul id="changelog-list" style="padding-left:20px">
+            <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
+          </ul>
+          <p class="muted">Future contributors: append entries above, newest first. Keep it short.</p>
+        `;
+        ctx.elBody.appendChild(el);
+      }
+    });
+
+    // initial render
+    renderNav();
+    if(!location.hash) go('scratchpad'); else renderRoute();
+  </script>
+</body>
+</html>
+
