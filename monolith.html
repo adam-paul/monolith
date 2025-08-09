@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Monolith App</title>
     <style>
-      /* =====================
-       MONOLITH APP BASE CSS
-       ===================== */
+      /* ===================== MONOLITH APP BASE CSS ===================== */
       :root {
         --bg: #0b0c0f;
         --panel: #12151a;
@@ -168,7 +166,6 @@
         letter-spacing: 0.08em;
         font-size: 12px;
       }
-
       /* Main viewport */
       #viewport {
         display: grid;
@@ -626,6 +623,85 @@
           opacity: 0;
         }
       }
+
+      /* --- Command Palette (Ctrl/Cmd + K) --- */
+      .cmdk-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 10vh;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(2px);
+        z-index: 9999;
+      }
+      .cmdk {
+        width: min(720px, 92vw);
+        background: color-mix(in oklab, var(--panel) 95%, transparent);
+        border: 1px solid color-mix(in oklab, var(--text) 12%, transparent);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .cmdk-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid
+          color-mix(in oklab, var(--text) 10%, transparent);
+      }
+      .cmdk-input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: 8px 10px;
+        color: var(--text);
+        font-size: 16px;
+      }
+      .cmdk-kbd {
+        font-size: 11px;
+        padding: 3px 6px;
+        border-radius: 6px;
+        border: 1px solid color-mix(in oklab, var(--text) 18%, transparent);
+        background: color-mix(in oklab, var(--panel) 80%, transparent);
+        color: var(--muted);
+      }
+      .cmdk-list {
+        max-height: 50vh;
+        overflow: auto;
+      }
+      .cmdk-group {
+        padding: 8px 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      .cmdk-item {
+        display: grid;
+        grid-template-columns: 26px 1fr auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        cursor: pointer;
+      }
+      .cmdk-item:hover,
+      .cmdk-item.active {
+        background: color-mix(in oklab, var(--accent) 20%, transparent);
+      }
+      .cmdk-item .hint {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .cmdk-empty {
+        padding: 20px;
+        text-align: center;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
@@ -669,16 +745,15 @@
         </div>
       </main>
     </div>
-
     <script type="module">
       "use strict";
       /* =====================
-       MONOLITH APP CORE
-       - No build, single file, runs in modern browsers.
-       - Extension points marked with FEATURES_JS_HERE and FEATURES_CSS_HERE.
-       - Add features by calling registerFeature({ id, name, icon, keywords, mount(ctx) {...} })
-       - Keep IDs unique (suggest kebab-case). Use ctx.store/ctx.bus/ctx.persist.
-       ===================== */
+     MONOLITH APP CORE
+     - No build, single file, runs in modern browsers.
+     - Extension points marked with FEATURES_JS_HERE and FEATURES_CSS_HERE.
+     - Add features by calling registerFeature({ id, name, icon, keywords, mount(ctx) {...} })
+     - Keep IDs unique (suggest kebab-case). Use ctx.store/ctx.bus/ctx.persist.
+     ===================== */
 
       // --- tiny util helpers
       const $ = (sel, el = document) => el.querySelector(sel);
@@ -718,7 +793,7 @@
           theme: matchMedia("(prefers-color-scheme: light)").matches
             ? "light"
             : "dark",
-          version: "0.6.0",
+          version: "0.7.0",
         },
         features: {}, // feature-local states by id
         registry: [], // list of features
@@ -949,10 +1024,10 @@
           const div = document.createElement("div");
           div.className = "paywall";
           div.innerHTML = `
-          <h3>🔒 This feature requires <span class="badge">Monolith Pro</span></h3>
-          <p>Activate Pro to unlock <b>${f.name}</b> and other premium features.</p>
-          <button id="goProBtn">Activate Pro</button>
-        `;
+        <h3>🔒 This feature requires <span class="badge">Monolith Pro</span></h3>
+        <p>Activate Pro to unlock <b>${f.name}</b> and other premium features.</p>
+        <button id="goProBtn">Activate Pro</button>
+      `;
           body.appendChild(div);
           $("#goProBtn").onclick = () => go("pro");
         } else {
@@ -1019,7 +1094,7 @@
         );
       });
 
-      // === FEATURES_JS_HERE ===
+      /* === FEATURES_JS_HERE === */
       // Example Feature: Scratchpad (baseline, easy to extend)
       registerFeature({
         id: "scratchpad",
@@ -1083,17 +1158,18 @@
         mount(ctx) {
           const el = document.createElement("div");
           el.innerHTML = `
-      <h3>Project Changelog</h3>
-      <ul id="changelog-list" style="padding-left:20px">
-        <li><b>v0.6.0</b> – Added Pomodoro Timer with visual progress, sound notifications, session tracking, and productivity statistics. --Claude Opus</li>
-        <li><b>v0.5.0</b> – Added Code Snippet Manager with syntax highlighting, search, and language categorization for developers. --Claude Sonnet</li>
-        <li><b>v0.4.0</b> – Added a secure Password Generator with length/complexity options. --Gemini</li>
-        <li><b>v0.3.0</b> – Added Rock Paper Scissors game for fun. --Grok</li>
-        <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
-        <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
-      </ul>
-      <p class="muted">Future contributors: append entries above, newest first. Keep it short.</p>
-    `;
+    <h3>Project Changelog</h3>
+    <ul id="changelog-list" style="padding-left:20px">
+      <li><b>v0.7.0</b> – Added Command Palette (Ctrl/Cmd + K) for instant navigation and quick actions. --GPT-5 Thinking</li>
+      <li><b>v0.6.0</b> – Added Pomodoro Timer with visual progress, sound notifications, session tracking, and productivity statistics. --Claude Opus</li>
+      <li><b>v0.5.0</b> – Added Code Snippet Manager with syntax highlighting, search, and language categorization for developers. --Claude Sonnet</li>
+      <li><b>v0.4.0</b> – Added a secure Password Generator with length/complexity options. --Gemini</li>
+      <li><b>v0.3.0</b> – Added Rock Paper Scissors game for fun. --Grok</li>
+      <li><b>v0.2.0</b> – Added offline <i>Pro</i> licensing (no MetaMask), Pro gating for features, and a Test Runner. Nav shows PRO-locked items. --GPT-5</li>
+      <li><b>v0.1.0</b> – Seeded project with core, theme toggle, state export/import, Scratchpad, and this Changelog.</li>
+    </ul>
+    <p class="muted">Future contributors: append entries above, newest first. Keep it short.</p>
+  `;
           ctx.elBody.appendChild(el);
         },
       });
@@ -1109,21 +1185,21 @@
           const status = proStatus();
           const root = document.createElement("div");
           root.innerHTML = `
-      <div class="kv"><div>Status</div><div>${status.active ? '<span class="badge">Active</span>' : '<span class="badge">Free</span>'}</div></div>
-      <div class="kv"><div>Plan</div><div>${status.license?.plan ?? "-"}</div></div>
-      <div class="kv"><div>Owner</div><div>${status.license?.name ?? "-"}</div></div>
-      <div class="kv"><div>Expires</div><div>${status.license?.exp ?? "—"}</div></div>
-      <hr/>
-      <h4>Activate with License</h4>
-      <div class="kv"><div>License</div><div><input id="licInput" class="search" placeholder="Paste license blob here" /></div></div>
-      <div class="kv"><div></div><div><button id="applyLic">Activate</button> <button id="clearLic">Remove</button> <button id="exportLic">Export</button></div></div>
-      <hr/>
-      <h4>Redeem Coupon</h4>
-      <div class="kv"><div>Your name</div><div><input id="nameInput" class="search" placeholder="Jane Developer" value="${s.name || ""}"></div></div>
-      <div class="kv"><div>Coupon</div><div><input id="couponInput" class="search" placeholder="FREE-TRIAL-7 or PRO-LIFETIME or PRO-ANNUAL"></div></div>
-      <div class="kv"><div></div><div><button id="redeemBtn">Redeem</button></div></div>
-      <p class="muted">Coupons are local-only and for demo. Licenses are encoded JSON with checksum; no network required.</p>
-    `;
+    <div class="kv"><div>Status</div><div>${status.active ? '<span class="badge">Active</span>' : '<span class="badge">Free</span>'}</div></div>
+    <div class="kv"><div>Plan</div><div>${status.license?.plan ?? "-"}</div></div>
+    <div class="kv"><div>Owner</div><div>${status.license?.name ?? "-"}</div></div>
+    <div class="kv"><div>Expires</div><div>${status.license?.exp ?? "—"}</div></div>
+    <hr/>
+    <h4>Activate with License</h4>
+    <div class="kv"><div>License</div><div><input id="licInput" class="search" placeholder="Paste license blob here" /></div></div>
+    <div class="kv"><div></div><div><button id="applyLic">Activate</button> <button id="clearLic">Remove</button> <button id="exportLic">Export</button></div></div>
+    <hr/>
+    <h4>Redeem Coupon</h4>
+    <div class="kv"><div>Your name</div><div><input id="nameInput" class="search" placeholder="Jane Developer" value="${s.name || ""}"></div></div>
+    <div class="kv"><div>Coupon</div><div><input id="couponInput" class="search" placeholder="FREE-TRIAL-7 or PRO-LIFETIME or PRO-ANNUAL"></div></div>
+    <div class="kv"><div></div><div><button id="redeemBtn">Redeem</button></div></div>
+    <p class="muted">Coupons are local-only and for demo. Licenses are encoded JSON with checksum; no network required.</p>
+  `;
           ctx.elBody.appendChild(root);
 
           const $id = (x) => root.querySelector("#" + x);
@@ -1406,27 +1482,27 @@
           container.className = "passgen-container";
 
           container.innerHTML = `
-      <div class="passgen-display">
-        <div id="passOutput" class="passgen-output empty">Click Generate...</div>
-        <button id="copyBtn">Copy</button>
+    <div class="passgen-display">
+      <div id="passOutput" class="passgen-output empty">Click Generate...</div>
+      <button id="copyBtn">Copy</button>
+    </div>
+    <div class="passgen-options">
+      <div class="passgen-option">
+        <label for="lengthSlider">Length: <span id="lengthVal" class="passgen-length">${state.length}</span></label>
+        <input type="range" id="lengthSlider" class="passgen-slider" min="8" max="64" value="${state.length}">
       </div>
-      <div class="passgen-options">
-        <div class="passgen-option">
-          <label for="lengthSlider">Length: <span id="lengthVal" class="passgen-length">${state.length}</span></label>
-          <input type="range" id="lengthSlider" class="passgen-slider" min="8" max="64" value="${state.length}">
-        </div>
-        <div class="passgen-option">
-          <label for="upperCheck"><input type="checkbox" id="upperCheck" ${state.includeUpper ? "checked" : ""}> Include Uppercase</label>
-        </div>
-        <div class="passgen-option">
-          <label for="numCheck"><input type="checkbox" id="numCheck" ${state.includeNumbers ? "checked" : ""}> Include Numbers</label>
-        </div>
-        <div class="passgen-option">
-          <label for="symCheck"><input type="checkbox" id="symCheck" ${state.includeSymbols ? "checked" : ""}> Include Symbols</label>
-        </div>
+      <div class="passgen-option">
+        <label for="upperCheck"><input type="checkbox" id="upperCheck" ${state.includeUpper ? "checked" : ""}> Include Uppercase</label>
       </div>
-      <button id="generateBtn" class="passgen-generate-btn">Generate Password</button>
-    `;
+      <div class="passgen-option">
+        <label for="numCheck"><input type="checkbox" id="numCheck" ${state.includeNumbers ? "checked" : ""}> Include Numbers</label>
+      </div>
+      <div class="passgen-option">
+        <label for="symCheck"><input type="checkbox" id="symCheck" ${state.includeSymbols ? "checked" : ""}> Include Symbols</label>
+      </div>
+    </div>
+    <button id="generateBtn" class="passgen-generate-btn">Generate Password</button>
+  `;
 
           ctx.elBody.appendChild(container);
 
@@ -1549,9 +1625,9 @@
           const header = document.createElement("div");
           header.className = "snippets-header";
           header.innerHTML = `
-      <input type="text" id="snippetSearch" class="search snippets-search" placeholder="Search snippets...">
-      <button id="addSnippetBtn">+ Add Snippet</button>
-    `;
+    <input type="text" id="snippetSearch" class="search snippets-search" placeholder="Search snippets...">
+    <button id="addSnippetBtn">+ Add Snippet</button>
+  `;
 
           // Create snippets grid
           const grid = document.createElement("div");
@@ -1602,10 +1678,10 @@
 
             if (filtered.length === 0) {
               snippetsGrid.innerHTML = `
-          <div class="snippet-empty">
-            ${filter ? "No snippets match your search." : "No snippets yet. Add your first one!"}
-          </div>
-        `;
+        <div class="snippet-empty">
+          ${filter ? "No snippets match your search." : "No snippets yet. Add your first one!"}
+        </div>
+      `;
               return;
             }
 
@@ -1618,19 +1694,19 @@
               const langColor = getLanguageColor(snippet.language);
 
               card.innerHTML = `
-          <div class="snippet-header">
-            <div class="snippet-title">${snippet.title}</div>
-            <div class="snippet-lang" style="background-color: ${langColor}20; color: ${langColor}">
-              ${snippet.language}
-            </div>
-            <div class="snippet-actions">
-              <button onclick="copySnippet('${snippet.id}')">📋</button>
-              <button onclick="editSnippet('${snippet.id}')">✏️</button>
-              <button onclick="deleteSnippet('${snippet.id}')" style="color: var(--danger)">🗑️</button>
-            </div>
+        <div class="snippet-header">
+          <div class="snippet-title">${snippet.title}</div>
+          <div class="snippet-lang" style="background-color: ${langColor}20; color: ${langColor}">
+            ${snippet.language}
           </div>
-          <div class="snippet-code">${escapeHtml(snippet.code)}</div>
-        `;
+          <div class="snippet-actions">
+            <button onclick="copySnippet('${snippet.id}')">📋</button>
+            <button onclick="editSnippet('${snippet.id}')">✏️</button>
+            <button onclick="deleteSnippet('${snippet.id}')" style="color: var(--danger)">🗑️</button>
+          </div>
+        </div>
+        <div class="snippet-code">${escapeHtml(snippet.code)}</div>
+      `;
 
               snippetsGrid.appendChild(card);
             });
@@ -1649,33 +1725,33 @@
             const form = document.createElement("div");
             form.className = "snippet-form";
             form.innerHTML = `
-        <div class="snippet-form-row">
-          <input type="text" id="snippetTitle" placeholder="Snippet title..." value="${isEdit ? snippet.title : ""}" />
-          <select id="snippetLang">
-            <option value="javascript" ${isEdit && snippet.language === "javascript" ? "selected" : ""}>JavaScript</option>
-            <option value="python" ${isEdit && snippet.language === "python" ? "selected" : ""}>Python</option>
-            <option value="html" ${isEdit && snippet.language === "html" ? "selected" : ""}>HTML</option>
-            <option value="css" ${isEdit && snippet.language === "css" ? "selected" : ""}>CSS</option>
-            <option value="java" ${isEdit && snippet.language === "java" ? "selected" : ""}>Java</option>
-            <option value="cpp" ${isEdit && snippet.language === "cpp" ? "selected" : ""}>C++</option>
-            <option value="rust" ${isEdit && snippet.language === "rust" ? "selected" : ""}>Rust</option>
-            <option value="go" ${isEdit && snippet.language === "go" ? "selected" : ""}>Go</option>
-            <option value="php" ${isEdit && snippet.language === "php" ? "selected" : ""}>PHP</option>
-            <option value="ruby" ${isEdit && snippet.language === "ruby" ? "selected" : ""}>Ruby</option>
-            <option value="sql" ${isEdit && snippet.language === "sql" ? "selected" : ""}>SQL</option>
-            <option value="bash" ${isEdit && snippet.language === "bash" ? "selected" : ""}>Bash</option>
-            <option value="json" ${isEdit && snippet.language === "json" ? "selected" : ""}>JSON</option>
-            <option value="xml" ${isEdit && snippet.language === "xml" ? "selected" : ""}>XML</option>
-            <option value="typescript" ${isEdit && snippet.language === "typescript" ? "selected" : ""}>TypeScript</option>
-            <option value="other" ${isEdit && snippet.language === "other" ? "selected" : ""}>Other</option>
-          </select>
-        </div>
-        <textarea id="snippetCode" placeholder="Paste your code here...">${isEdit ? snippet.code : ""}</textarea>
-        <div class="snippet-form-actions">
-          <button id="cancelBtn">Cancel</button>
-          <button id="saveBtn">${isEdit ? "Update" : "Save"} Snippet</button>
-        </div>
-      `;
+      <div class="snippet-form-row">
+        <input type="text" id="snippetTitle" placeholder="Snippet title..." value="${isEdit ? snippet.title : ""}" />
+        <select id="snippetLang">
+          <option value="javascript" ${isEdit && snippet.language === "javascript" ? "selected" : ""}>JavaScript</option>
+          <option value="python" ${isEdit && snippet.language === "python" ? "selected" : ""}>Python</option>
+          <option value="html" ${isEdit && snippet.language === "html" ? "selected" : ""}>HTML</option>
+          <option value="css" ${isEdit && snippet.language === "css" ? "selected" : ""}>CSS</option>
+          <option value="java" ${isEdit && snippet.language === "java" ? "selected" : ""}>Java</option>
+          <option value="cpp" ${isEdit && snippet.language === "cpp" ? "selected" : ""}>C++</option>
+          <option value="rust" ${isEdit && snippet.language === "rust" ? "selected" : ""}>Rust</option>
+          <option value="go" ${isEdit && snippet.language === "go" ? "selected" : ""}>Go</option>
+          <option value="php" ${isEdit && snippet.language === "php" ? "selected" : ""}>PHP</option>
+          <option value="ruby" ${isEdit && snippet.language === "ruby" ? "selected" : ""}>Ruby</option>
+          <option value="sql" ${isEdit && snippet.language === "sql" ? "selected" : ""}>SQL</option>
+          <option value="bash" ${isEdit && snippet.language === "bash" ? "selected" : ""}>Bash</option>
+          <option value="json" ${isEdit && snippet.language === "json" ? "selected" : ""}>JSON</option>
+          <option value="xml" ${isEdit && snippet.language === "xml" ? "selected" : ""}>XML</option>
+          <option value="typescript" ${isEdit && snippet.language === "typescript" ? "selected" : ""}>TypeScript</option>
+          <option value="other" ${isEdit && snippet.language === "other" ? "selected" : ""}>Other</option>
+        </select>
+      </div>
+      <textarea id="snippetCode" placeholder="Paste your code here...">${isEdit ? snippet.code : ""}</textarea>
+      <div class="snippet-form-actions">
+        <button id="cancelBtn">Cancel</button>
+        <button id="saveBtn">${isEdit ? "Update" : "Save"} Snippet</button>
+      </div>
+    `;
 
             // Insert form at the top
             container.insertBefore(form, grid);
@@ -1839,114 +1915,114 @@
           // Create timer display
           const timerSection = document.createElement("div");
           timerSection.innerHTML = `
-      <div class="pomodoro-timer-circle">
-        <svg class="pomodoro-timer-svg">
-          <circle class="pomodoro-timer-bg" cx="140" cy="140" r="130"></circle>
-          <circle class="pomodoro-timer-progress ${state.currentPhase !== "work" ? "break" : ""}" 
-                  cx="140" cy="140" r="130" 
-                  stroke-dasharray="816.8" 
-                  stroke-dashoffset="816.8"></circle>
-        </svg>
-        <div class="pomodoro-timer-display">
-          <div class="pomodoro-time">25:00</div>
-          <div class="pomodoro-phase">Ready to Focus</div>
-        </div>
+    <div class="pomodoro-timer-circle">
+      <svg class="pomodoro-timer-svg">
+        <circle class="pomodoro-timer-bg" cx="140" cy="140" r="130"></circle>
+        <circle class="pomodoro-timer-progress ${state.currentPhase !== "work" ? "break" : ""}" 
+                cx="140" cy="140" r="130" 
+                stroke-dasharray="816.8" 
+                stroke-dashoffset="816.8"></circle>
+      </svg>
+      <div class="pomodoro-timer-display">
+        <div class="pomodoro-time">25:00</div>
+        <div class="pomodoro-phase">Ready to Focus</div>
       </div>
-    `;
+    </div>
+  `;
 
           // Task input
           const taskSection = document.createElement("div");
           taskSection.innerHTML = `
-      <input type="text" class="pomodoro-task-input" 
-             placeholder="What are you working on?" 
-             value="${state.currentTask}">
-    `;
+    <input type="text" class="pomodoro-task-input" 
+           placeholder="What are you working on?" 
+           value="${state.currentTask}">
+  `;
 
           // Controls
           const controlsSection = document.createElement("div");
           controlsSection.className = "pomodoro-controls";
           controlsSection.innerHTML = `
-      <button id="startBtn" class="pomodoro-btn-primary">Start Focus</button>
-      <button id="pauseBtn" style="display:none">Pause</button>
-      <button id="resetBtn">Reset</button>
-      <button id="skipBtn">Skip</button>
-    `;
+    <button id="startBtn" class="pomodoro-btn-primary">Start Focus</button>
+    <button id="pauseBtn" style="display:none">Pause</button>
+    <button id="resetBtn">Reset</button>
+    <button id="skipBtn">Skip</button>
+  `;
 
           // Stats
           const statsSection = document.createElement("div");
           statsSection.className = "pomodoro-stats";
           statsSection.innerHTML = `
-      <div class="pomodoro-stat">
-        <div class="pomodoro-stat-value">${state.todayStats.sessions}</div>
-        <div class="pomodoro-stat-label">Today's Sessions</div>
-      </div>
-      <div class="pomodoro-stat">
-        <div class="pomodoro-stat-value">${Math.floor(state.todayStats.workMinutes)}</div>
-        <div class="pomodoro-stat-label">Minutes Focused</div>
-      </div>
-      <div class="pomodoro-stat">
-        <div class="pomodoro-stat-value">${state.sessionCount % state.settings.sessionsUntilLongBreak}</div>
-        <div class="pomodoro-stat-label">Until Long Break</div>
-      </div>
-      <div class="pomodoro-stat">
-        <div class="pomodoro-stat-value">${Math.floor(state.totalWorkTime / 60)}</div>
-        <div class="pomodoro-stat-label">Total Hours</div>
-      </div>
-    `;
+    <div class="pomodoro-stat">
+      <div class="pomodoro-stat-value">${state.todayStats.sessions}</div>
+      <div class="pomodoro-stat-label">Today's Sessions</div>
+    </div>
+    <div class="pomodoro-stat">
+      <div class="pomodoro-stat-value">${Math.floor(state.todayStats.workMinutes)}</div>
+      <div class="pomodoro-stat-label">Minutes Focused</div>
+    </div>
+    <div class="pomodoro-stat">
+      <div class="pomodoro-stat-value">${state.sessionCount % state.settings.sessionsUntilLongBreak}</div>
+      <div class="pomodoro-stat-label">Until Long Break</div>
+    </div>
+    <div class="pomodoro-stat">
+      <div class="pomodoro-stat-value">${Math.floor(state.totalWorkTime / 60)}</div>
+      <div class="pomodoro-stat-label">Total Hours</div>
+    </div>
+  `;
 
           // Settings
           const settingsSection = document.createElement("div");
           settingsSection.className = "pomodoro-settings";
           settingsSection.innerHTML = `
-      <h4>Timer Settings</h4>
-      <div class="pomodoro-setting-row">
-        <span class="pomodoro-setting-label">Focus Time</span>
-        <input type="range" id="workSlider" min="1" max="60" value="${state.settings.workMinutes}">
-        <span class="pomodoro-setting-value">${state.settings.workMinutes}m</span>
-      </div>
-      <div class="pomodoro-setting-row">
-        <span class="pomodoro-setting-label">Short Break</span>
-        <input type="range" id="shortBreakSlider" min="1" max="30" value="${state.settings.shortBreakMinutes}">
-        <span class="pomodoro-setting-value">${state.settings.shortBreakMinutes}m</span>
-      </div>
-      <div class="pomodoro-setting-row">
-        <span class="pomodoro-setting-label">Long Break</span>
-        <input type="range" id="longBreakSlider" min="5" max="60" value="${state.settings.longBreakMinutes}">
-        <span class="pomodoro-setting-value">${state.settings.longBreakMinutes}m</span>
-      </div>
-      <div style="display:flex; gap:16px; margin-top:12px;">
-        <label><input type="checkbox" id="soundCheck" ${state.settings.soundEnabled ? "checked" : ""}> Sound Alerts</label>
-        <label><input type="checkbox" id="autoBreakCheck" ${state.settings.autoStartBreaks ? "checked" : ""}> Auto-start Breaks</label>
-        <label><input type="checkbox" id="autoWorkCheck" ${state.settings.autoStartWork ? "checked" : ""}> Auto-start Work</label>
-      </div>
-    `;
+    <h4>Timer Settings</h4>
+    <div class="pomodoro-setting-row">
+      <span class="pomodoro-setting-label">Focus Time</span>
+      <input type="range" id="workSlider" min="1" max="60" value="${state.settings.workMinutes}">
+      <span class="pomodoro-setting-value">${state.settings.workMinutes}m</span>
+    </div>
+    <div class="pomodoro-setting-row">
+      <span class="pomodoro-setting-label">Short Break</span>
+      <input type="range" id="shortBreakSlider" min="1" max="30" value="${state.settings.shortBreakMinutes}">
+      <span class="pomodoro-setting-value">${state.settings.shortBreakMinutes}m</span>
+    </div>
+    <div class="pomodoro-setting-row">
+      <span class="pomodoro-setting-label">Long Break</span>
+      <input type="range" id="longBreakSlider" min="5" max="60" value="${state.settings.longBreakMinutes}">
+      <span class="pomodoro-setting-value">${state.settings.longBreakMinutes}m</span>
+    </div>
+    <div style="display:flex; gap:16px; margin-top:12px;">
+      <label><input type="checkbox" id="soundCheck" ${state.settings.soundEnabled ? "checked" : ""}> Sound Alerts</label>
+      <label><input type="checkbox" id="autoBreakCheck" ${state.settings.autoStartBreaks ? "checked" : ""}> Auto-start Breaks</label>
+      <label><input type="checkbox" id="autoWorkCheck" ${state.settings.autoStartWork ? "checked" : ""}> Auto-start Work</label>
+    </div>
+  `;
 
           // History
           const historySection = document.createElement("div");
           const renderHistory = () => {
             const recentHistory = state.history.slice(-5).reverse();
             historySection.innerHTML = `
-        <h4>Recent Sessions</h4>
-        <div class="pomodoro-history">
-          ${
-            recentHistory.length === 0
-              ? '<div class="muted">No sessions yet</div>'
-              : recentHistory
-                  .map(
-                    (item) => `
-              <div class="pomodoro-history-item">
-                <div>
-                  <div class="pomodoro-history-task">${item.task || "Untitled Session"}</div>
-                  <div class="pomodoro-history-time">${new Date(item.timestamp).toLocaleString()}</div>
-                </div>
-                <div>${item.duration}m</div>
+      <h4>Recent Sessions</h4>
+      <div class="pomodoro-history">
+        ${
+          recentHistory.length === 0
+            ? '<div class="muted">No sessions yet</div>'
+            : recentHistory
+                .map(
+                  (item) => `
+            <div class="pomodoro-history-item">
+              <div>
+                <div class="pomodoro-history-task">${item.task || "Untitled Session"}</div>
+                <div class="pomodoro-history-time">${new Date(item.timestamp).toLocaleString()}</div>
               </div>
-            `,
-                  )
-                  .join("")
-          }
-        </div>
-      `;
+              <div>${item.duration}m</div>
+            </div>
+          `,
+                )
+                .join("")
+        }
+      </div>
+    `;
           };
           renderHistory();
 
@@ -2262,6 +2338,255 @@
               clearInterval(timerInterval);
             }
           });
+        },
+      });
+
+      // === New Feature: Command Palette (Ctrl/Cmd + K) ===
+      registerFeature({
+        id: "command-palette",
+        name: "Command Palette",
+        icon: "⌨️",
+        keywords: ["search", "nav", "quick actions", "cmdk"],
+        onRegister(ctx) {
+          // Avoid double-injection if state rehydrated
+          if (document.getElementById("cmdkOverlay")) return;
+
+          // Overlay + shell
+          const overlay = document.createElement("div");
+          overlay.className = "cmdk-overlay";
+          overlay.id = "cmdkOverlay";
+          overlay.innerHTML = `
+          <div class="cmdk" role="dialog" aria-modal="true" aria-label="Command Palette">
+            <div class="cmdk-header">
+              <input class="cmdk-input" id="cmdkInput" placeholder="Type a command or feature… (e.g. 'theme', 'pomodoro')" />
+              <span class="cmdk-kbd">Esc</span>
+            </div>
+            <div class="cmdk-list" id="cmdkList"></div>
+          </div>
+        `;
+          document.body.appendChild(overlay);
+
+          const elInput = overlay.querySelector("#cmdkInput");
+          const elList = overlay.querySelector("#cmdkList");
+
+          const actions = [
+            {
+              id: "action:toggle-theme",
+              label: "Toggle Theme",
+              hint: "Light/Dark",
+              icon: "🌓",
+              run: () => $("#themeToggle").click(),
+              group: "Actions",
+            },
+            {
+              id: "action:export-state",
+              label: "Export App State",
+              hint: "JSON",
+              icon: "⇪",
+              run: () => $("#exportBtn").click(),
+              group: "Actions",
+            },
+            {
+              id: "action:import-state",
+              label: "Import App State…",
+              hint: "JSON",
+              icon: "⇩",
+              run: () => $("#importFile").click(),
+              group: "Actions",
+            },
+            {
+              id: "action:focus-mode",
+              label: "Toggle Focus Mode",
+              hint: "Hide Sidebar",
+              icon: "🎯",
+              run: () => document.body.classList.toggle("focus"),
+              group: "Actions",
+            },
+            {
+              id: "action:search-features",
+              label: "Focus Feature Search",
+              hint: "Sidebar",
+              icon: "🔎",
+              run: () => {
+                closePalette();
+                $("#globalSearch").focus();
+              },
+              group: "Actions",
+            },
+            {
+              id: "action:open-pro",
+              label: "Open Pro",
+              hint: "Licensing",
+              icon: "💎",
+              run: () => go("pro"),
+              group: "Actions",
+            },
+            {
+              id: "action:open-changelog",
+              label: "Open Changelog",
+              hint: "What's New",
+              icon: "📜",
+              run: () => go("changelog"),
+              group: "Actions",
+            },
+          ];
+
+          const featureItems = () =>
+            store.get().registry.map(({ id, name }) => ({
+              id: `feature:${id}`,
+              label: name,
+              hint: `#${id}`,
+              icon: registry.get(id)?.icon || "🧩",
+              run: () => go(id),
+              group: "Features",
+            }));
+
+          let filtered = [];
+          let activeIndex = 0;
+
+          const buildItems = (q = "") => {
+            const list = [...actions, ...featureItems()];
+            if (!q.trim()) return list;
+            q = q.toLowerCase();
+            return list.filter(
+              (x) =>
+                x.label.toLowerCase().includes(q) ||
+                x.hint.toLowerCase().includes(q),
+            );
+          };
+
+          const renderList = (q = "") => {
+            filtered = buildItems(q);
+            activeIndex = 0;
+            if (filtered.length === 0) {
+              elList.innerHTML = `<div class="cmdk-empty">No matches. Try typing “theme”, “export”, or a feature name.</div>`;
+              return;
+            }
+            // Group by group label with simple render
+            const groups = new Map();
+            for (const item of filtered) {
+              if (!groups.has(item.group)) groups.set(item.group, []);
+              groups.get(item.group).push(item);
+            }
+            elList.innerHTML = "";
+            for (const [grp, items] of groups) {
+              const g = document.createElement("div");
+              g.innerHTML = `<div class="cmdk-group">${grp}</div>`;
+              elList.appendChild(g);
+              for (const [i, it] of items.entries()) {
+                const div = document.createElement("div");
+                div.className = "cmdk-item";
+                div.setAttribute("role", "button");
+                div.dataset.id = it.id;
+                div.innerHTML = `<div>${it.icon}</div><div>${it.label}<div class="hint">${it.hint}</div></div><div></div>`;
+                div.addEventListener("click", () => {
+                  it.run();
+                  closePalette();
+                });
+                elList.appendChild(div);
+              }
+            }
+            updateActive();
+          };
+
+          const openPalette = () => {
+            overlay.style.display = "flex";
+            elInput.value = "";
+            renderList("");
+            elInput.focus();
+          };
+          const closePalette = () => {
+            overlay.style.display = "none";
+            elInput.blur();
+          };
+
+          const updateActive = () => {
+            $$(".cmdk-item", elList).forEach((el) =>
+              el.classList.remove("active"),
+            );
+            const items = $$(".cmdk-item", elList);
+            if (items.length === 0) return;
+            const el =
+              items[Math.max(0, Math.min(activeIndex, items.length - 1))];
+            if (el) el.classList.add("active");
+          };
+
+          // Keyboard handlers
+          window.addEventListener("keydown", (e) => {
+            const targetTag = (e.target && e.target.tagName) || "";
+            const inEditable =
+              targetTag === "INPUT" ||
+              targetTag === "TEXTAREA" ||
+              (e.target && e.target.isContentEditable);
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+              e.preventDefault();
+              openPalette();
+              return;
+            }
+            if (overlay.style.display === "flex") {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                closePalette();
+                return;
+              }
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeIndex++;
+                updateActive();
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeIndex--;
+                if (activeIndex < 0) activeIndex = 0;
+                updateActive();
+                return;
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const items = $$(".cmdk-item", elList);
+                const el =
+                  items[Math.max(0, Math.min(activeIndex, items.length - 1))];
+                if (el) {
+                  const id = el.dataset.id;
+                  const item = filtered.find((x) => x.id === id);
+                  if (item) item.run();
+                  closePalette();
+                }
+                return;
+              }
+            }
+          });
+
+          elInput.addEventListener("input", (e) =>
+            renderList(e.target.value || ""),
+          );
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) closePalette();
+          });
+
+          // Re-render options if features change
+          store.sub(() => {
+            if (overlay.style.display === "flex") {
+              renderList(elInput.value || "");
+            }
+          });
+
+          // Expose to global for the feature view button
+          window.__openCommandPalette = openPalette;
+        },
+        mount(ctx) {
+          // Simple info panel with an open button
+          const box = document.createElement("div");
+          box.innerHTML = `
+          <p>Press <span class="cmdk-kbd">Ctrl</span> + <span class="cmdk-kbd">K</span> (or <span class="cmdk-kbd">⌘</span> + <span class="cmdk-kbd">K</span>) anywhere to open the palette.</p>
+          <button id="openCmdK">Open Palette</button>
+          <p class="muted">Navigate features, toggle theme, export/import state, and more — all without leaving the keyboard.</p>
+        `;
+          ctx.elBody.appendChild(box);
+          box.querySelector("#openCmdK").onclick = () =>
+            window.__openCommandPalette?.();
         },
       });
 
